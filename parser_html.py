@@ -94,8 +94,7 @@ def get_sutta_data_from_url(link):
         }
     """
 
-    results = {}
-    results['link'] = f'http://sasana.pl{link}'
+    results = {'link': f'http://sasana.pl{link}'}
 
     author = TRANRSLATORS.get(parse_author_code(link))
     if author is not None:
@@ -140,20 +139,19 @@ def get_sutta_data_from_html(link):
     # 3. pamietaj zeby przepuszczac tylko polskie paragrafy
 
     results = {}
-    paragraph_list = []
     response = requests.get(f'http://sasana.pl{link}')
     html_doc = response.text
     soup = BeautifulSoup(html_doc, 'html.parser')
 
     results['title'] = parse_sutta_title(soup)
 
-    results['paragraph_list'] = paragraph_list.append(parse_all_paragraphs(soup))
+    results['paragraph_list'] = parse_all_paragraphs(soup)
 
     return results
 
 
 def parse_all_paragraphs(html_parser):
-    if check_page_kind(html_parser) == 'talbe':
+    if check_page_kind(html_parser) == 'table':
         return parse_paragraph_table(html_parser)
     else:
         return parse_paragraph_list(html_parser)
@@ -161,25 +159,37 @@ def parse_all_paragraphs(html_parser):
 
 def check_page_kind(html_parser):
     if html_parser.find('table') is None:
-        print('noname: ', html_parser.find('table'))
+        return
+        # print('No table: ', html_parser)
     else:
-        return html_parser.find('table').name
+        paragraph_data_list = html_parser.select('table p')
+        for paragraph in paragraph_data_list:
+            if len(str(paragraph)) > 400:
+                return 'table'
 
 
 def parse_paragraph_table(html_parser):
-    sutta_content = html_parser.find('div', class_='drop')
-    for paragraph_data in sutta_content:
-        paragraph = paragraph_data.find('p')
-        pl_paragraph = chcek_lang(paragraph)
-        if pl_paragraph is True:
-            return paragraph
+    paragraph_list = []
+    sutta_content = html_parser.select('table p')
+    # print(sutta_content)
+    for paragraph in sutta_content:
+        if len(str(paragraph)) > 200:
+            # print(paragraph)
+            pl_paragraph = chcek_lang(paragraph)
+            if pl_paragraph is True:
+                # print(pl_paragraph)
+                paragraph_list.append(paragraph)
+
+    return paragraph_list
 
 
 def parse_paragraph_list(html_parser):
+    paragraph_list = []
     sutta_content = html_parser.find('div', class_='drop')
     if sutta_content is not None:
         for paragraph in sutta_content.findAll('p', style=False):
-            return paragraph
+            paragraph_list.append(paragraph)
+    return paragraph_list
 
 
 def chcek_lang(paragraph):
@@ -194,8 +204,8 @@ def parse_sutta_title(html_parser):
     title_content_string = title_content.string
     title_match = re.search(r'(?<=-.|–.).+\w', title_content_string)
     if title_match is None:
-        return title_match
         print("I can't find title: ", title_content)
+        return title_match
     else:
         title = title_match.group()
         return title
@@ -208,5 +218,6 @@ def run_it():
     # print(get_link_list(SUTTA_LINKS)[0])
     # print(parse_sutta_nr(get_link_list(SUTTA_LINKS)[0]))
     print(get_sutta_data_list(get_link_list(SUTTA_LINKS)))
+
 
 run_it()
